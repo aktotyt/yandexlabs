@@ -2,7 +2,6 @@ package com.ruslan.mynotes.model
 
 import android.graphics.Color
 import org.json.JSONObject
-import java.util.Date
 import java.util.UUID
 
 data class Note(
@@ -10,9 +9,7 @@ data class Note(
     val name: String,
     val text: String,
     val bgColor: Int = Color.WHITE,
-    val level: Importance = Importance.NORMAL,
-    val selfDestructDate: Date? = null,
-    val createdAt: Date = Date()
+    val level: Importance = Importance.NORMAL
 ) {
     val uid: String get() = id
     val title: String get() = name
