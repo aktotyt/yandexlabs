@@ -9,8 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.ruslan.mynotes.model.Importance
-import com.ruslan.mynotes.model.Note
+import com.ruslan.mynotes.data.model.Importance
+import com.ruslan.mynotes.data.model.Note
 import com.ruslan.mynotes.ui.editnote.components.ColorSelector
 import com.ruslan.mynotes.ui.editnote.components.ImportanceSelector
 import com.ruslan.mynotes.ui.noteslist.components.NoteEditTopBar

@@ -1,6 +1,5 @@
 package com.ruslan.mynotes.ui.noteslist
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -21,8 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.ruslan.mynotes.model.Importance
-import com.ruslan.mynotes.model.Note
+import com.ruslan.mynotes.data.model.Importance
+import com.ruslan.mynotes.data.model.Note
 
 @Composable
 fun NotesListItem(

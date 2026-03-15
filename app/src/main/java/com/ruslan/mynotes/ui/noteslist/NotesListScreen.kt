@@ -13,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.ruslan.mynotes.model.Note
+import com.ruslan.mynotes.data.model.Note
 import com.ruslan.mynotes.ui.noteslist.components.SwipeWrapper
 
 @OptIn(ExperimentalMaterial3Api::class)

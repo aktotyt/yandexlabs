@@ -3,12 +3,13 @@ package com.ruslan.mynotes.ui.editnote
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ruslan.mynotes.model.Importance
-import com.ruslan.mynotes.model.Note
+import com.ruslan.mynotes.data.model.Importance
+import com.ruslan.mynotes.data.model.Note
 import com.ruslan.mynotes.data.repository.NotesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,7 +33,7 @@ class EditNoteViewModel @Inject constructor(
     private fun loadNote() {
         viewModelScope.launch {
             _isLoading.value = true
-            _note.value = repository.getNoteById(noteId)
+            _note.value = repository.observeNoteById(noteId).first()
             _isLoading.value = false
         }
     }
@@ -55,7 +56,7 @@ class EditNoteViewModel @Inject constructor(
 
     fun saveNote() {
         viewModelScope.launch {
-            _note.value?.let { repository.saveNote(it) }
+            _note.value?.let { repository.storeNoteToCache(it) }
         }
     }
 }

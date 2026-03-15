@@ -2,7 +2,7 @@ package com.ruslan.mynotes.ui.noteslist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ruslan.mynotes.model.Note
+import com.ruslan.mynotes.data.model.Note
 import com.ruslan.mynotes.data.repository.NotesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,14 +27,14 @@ class NotesListViewModel @Inject constructor(
     fun loadNotes() {
         viewModelScope.launch {
             _isLoading.value = true
-            _notes.value = repository.getAllNotes()
+            _notes.value = repository.fetchAllNotes()
             _isLoading.value = false
         }
     }
 
     fun deleteNote(noteId: String) {
         viewModelScope.launch {
-            repository.deleteNote(noteId)
+            repository.removeNoteFromCache(noteId)
             loadNotes()
         }
     }

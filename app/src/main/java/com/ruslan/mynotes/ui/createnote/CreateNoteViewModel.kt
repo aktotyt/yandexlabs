@@ -4,8 +4,8 @@ import android.graphics.Color
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ruslan.mynotes.model.Importance
-import com.ruslan.mynotes.model.Note
+import com.ruslan.mynotes.data.model.Importance
+import com.ruslan.mynotes.data.model.Note
 import com.ruslan.mynotes.data.repository.NotesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -43,7 +43,7 @@ class CreateNoteViewModel @Inject constructor(
 
     fun saveNote(onSuccess: () -> Unit) {
         viewModelScope.launch {
-            repository.saveNote(_note.value)
+            repository.storeNoteToCache(_note.value)
             onSuccess()
         }
     }

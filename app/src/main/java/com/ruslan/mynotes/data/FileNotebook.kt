@@ -2,8 +2,8 @@ package com.ruslan.mynotes.data
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
-import com.ruslan.mynotes.model.Note
-import com.ruslan.mynotes.model.toJson
+import com.ruslan.mynotes.data.model.Note
+import com.ruslan.mynotes.data.model.toJson
 import org.json.JSONArray
 import org.slf4j.LoggerFactory
 import java.io.File

@@ -2,7 +2,9 @@ package com.ruslan.mynotes.di
 
 import android.content.Context
 import com.ruslan.mynotes.data.repository.NotesRepository
-import com.ruslan.mynotes.data.source.FileNoteDataSource
+import com.ruslan.mynotes.data.repository.NotesRepositoryImpl
+import com.ruslan.mynotes.data.source.local.LocalNoteDataSource
+import com.ruslan.mynotes.data.source.remote.RemoteNoteDataSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,10 +14,25 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+object DataModule {
     @Provides
     @Singleton
-    fun provideNotesRepository(@ApplicationContext context: Context): NotesRepository {
-        return FileNoteDataSource(context)
+    fun provideLocalNoteSource(@ApplicationContext context: Context): LocalNoteDataSource {
+        return LocalNoteDataSource(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRemoteNoteSource(): RemoteNoteDataSource {
+        return RemoteNoteDataSource()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNoteRepository(
+        localSource: LocalNoteDataSource,
+        remoteSource: RemoteNoteDataSource
+    ): NotesRepository {
+        return NotesRepositoryImpl(localSource, remoteSource)
     }
 }

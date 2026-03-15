@@ -1,4 +1,4 @@
-package com.ruslan.mynotes.model
+package com.ruslan.mynotes.data.model
 
 enum class Importance {
     LOW, NORMAL, HIGH;
