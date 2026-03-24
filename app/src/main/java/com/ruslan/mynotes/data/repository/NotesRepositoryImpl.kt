@@ -3,10 +3,12 @@ package com.ruslan.mynotes.data.repository
 import com.ruslan.mynotes.data.model.Note
 import com.ruslan.mynotes.data.source.local.LocalNoteDataSource
 import com.ruslan.mynotes.data.source.remote.RemoteNoteDataSource
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -18,6 +20,22 @@ class NotesRepositoryImpl @Inject constructor(
     private val remoteSource: RemoteNoteDataSource
 ) : NotesRepository {
     private val syncLock = Mutex()
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        initializeRepository()
+    }
+
+    private fun initializeRepository() {
+        repositoryScope.launch {
+            try {
+                remoteSource.init()
+                synchronizeWithServer()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     override fun observeAllNotes(): Flow<List<Note>> =
         localSource.observeAllNotes().flowOn(Dispatchers.IO)
@@ -46,7 +64,6 @@ class NotesRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO + SupervisorJob()) {
             try {
                 syncLock.withLock {
-                    synchronizeWithServer()
                     try {
                         remoteSource.sendNote(note)
                         Result.success(Unit)
@@ -68,7 +85,6 @@ class NotesRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 syncLock.withLock {
-                    synchronizeWithServer()
                     remoteSource.removeNote(id)
                     Result.success(Unit)
                 }
@@ -78,7 +94,7 @@ class NotesRepositoryImpl @Inject constructor(
         }
 
     override suspend fun synchronizeWithServer() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.IO + SupervisorJob()) {
             try {
                 val remoteNotes = remoteSource.loadNotes()
                 localSource.saveAllNotes(remoteNotes)

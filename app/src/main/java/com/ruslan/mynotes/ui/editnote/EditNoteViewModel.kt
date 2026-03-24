@@ -48,7 +48,7 @@ class EditNoteViewModel @Inject constructor(
 
                 _note.value = localNote
             } catch (e: Exception) {
-                _uiEvents.emit(UiEvent.Error("Ошибка загрузки заметки: ${e.message}"))
+                _uiEvents.emit(UiEvent.Error("Ошибка загрузки: ${e.message}"))
             } finally {
                 _isLoading.value = false
             }
@@ -83,8 +83,6 @@ class EditNoteViewModel @Inject constructor(
                 }.onFailure { error ->
                     _uiEvents.emit(UiEvent.Error("Ошибка синхронизации: ${error.message}"))
                 }
-
-                repository.synchronizeWithServer()
             } catch (e: Exception) {
                 _uiEvents.emit(UiEvent.Error("Ошибка сохранения: ${e.message}"))
             } finally {
@@ -97,14 +95,12 @@ class EditNoteViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                repository.removeNoteFromCache(noteId)
                 repository.deleteNoteOnServer(noteId).onSuccess {
                     _uiEvents.emit(UiEvent.NoteDeleted)
+                    repository.removeNoteFromCache(noteId)
                 }.onFailure { error ->
                     _uiEvents.emit(UiEvent.Error("Ошибка удаления: ${error.message}"))
                 }
-
-                repository.synchronizeWithServer()
             } catch (e: Exception) {
                 _uiEvents.emit(UiEvent.Error("Ошибка удаления: ${e.message}"))
             } finally {

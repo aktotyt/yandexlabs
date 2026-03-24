@@ -13,17 +13,16 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun CreateNoteScreen(
     onBack: () -> Unit,
-    onSaveSuccess: () -> Unit,
     viewModel: CreateNoteViewModel = hiltViewModel(),
 ) {
-    val noteState = viewModel.note.value
+    val currentNote = viewModel.note.value
     val uiEvents = viewModel.uiEvents
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         uiEvents.collectLatest { event ->
             when (event) {
-                CreateNoteViewModel.UiEvent.NoteSaved -> onSaveSuccess()
+                CreateNoteViewModel.UiEvent.NoteSaved -> onBack()
                 is CreateNoteViewModel.UiEvent.Error -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
@@ -35,7 +34,7 @@ fun CreateNoteScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         NoteEditContent(
-            note = noteState,
+            note = currentNote,
             topBarTitle = "Создать заметку",
             onTitleChange = viewModel::updateTitle,
             onContentChange = viewModel::updateContent,

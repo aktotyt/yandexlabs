@@ -25,12 +25,10 @@ fun NotesListScreen(
 ) {
     val notes by viewModel.notes.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val uiEvents = viewModel.uiEvents
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
-        viewModel.refreshNotes()
         uiEvents.collectLatest { event ->
             when (event) {
                 is NotesListViewModel.UiEvent.Error -> {
@@ -73,81 +71,71 @@ fun NotesListScreen(
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background,
-        content = { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                when {
-                    isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                notes.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary
+                            Text(
+                                text = "Нет заметок",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Button(
+                                onClick = onCreateNote,
+                                shape = MaterialTheme.shapes.large
+                            ) {
+                                Text("Создать первую заметку")
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = notes,
+                            key = { it.id }
+                        ) { note ->
+                            SwipeWrapper(
+                                onDelete = { viewModel.deleteNote(note.id) },
+                                content = {
+                                    NotesListItem(
+                                        note = note,
+                                        onClick = { onNoteClick(note.id) },
+                                        onDelete = { viewModel.deleteNote(note.id) }
+                                    )
+                                }
                             )
                         }
                     }
-                    notes.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Text(
-                                    text = "Нет заметок",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Button(
-                                    onClick = onCreateNote,
-                                    shape = MaterialTheme.shapes.large
-                                ) {
-                                    Text("Создать первую заметку")
-                                }
-                            }
-                        }
-                    }
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(
-                                items = notes,
-                                key = { it.id }
-                            ) { note ->
-                                SwipeWrapper(
-                                    onDelete = { viewModel.deleteNote(note.id) },
-                                    content = {
-                                        NotesListItem(
-                                            note = note,
-                                            onClick = { onNoteClick(note.id) },
-                                            onDelete = { viewModel.deleteNote(note.id) }
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (isRefreshing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(16.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    )
                 }
             }
         }
-    )
+    }
 }

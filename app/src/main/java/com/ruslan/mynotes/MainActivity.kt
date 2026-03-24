@@ -9,11 +9,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.ruslan.mynotes.ui.createnote.CreateNoteScreen
 import com.ruslan.mynotes.ui.editnote.EditNoteScreen
 import com.ruslan.mynotes.ui.noteslist.NotesListScreen
 import com.ruslan.mynotes.ui.theme.NotesTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.serialization.Serializable
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -29,32 +31,42 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Serializable
+object NotesList
+
+@Serializable
+data class EditNote(val noteId: String)
+
+@Serializable
+object CreateNote
+
 @Composable
 fun AppNavigation(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
 ) {
-    NavHost(navController = navController, startDestination = "list") {
-        composable("list") {
+    NavHost(navController = navController, startDestination = NotesList) {
+        composable<NotesList> {
             NotesListScreen(
                 onNoteClick = { noteId ->
-                    navController.navigate("edit/$noteId")
+                    navController.navigate(EditNote(noteId))
                 },
                 onCreateNote = {
-                    navController.navigate("create")
+                    navController.navigate(CreateNote)
                 }
             )
         }
-        composable("edit/{noteId}") { backStackEntry ->
-            val noteId = backStackEntry.arguments?.getString("noteId") ?: return@composable
+
+        composable<EditNote> { backStackEntry ->
+            val note: EditNote = backStackEntry.toRoute()
             EditNoteScreen(
-                noteId = noteId,
+                noteId = note.noteId,
                 onBack = { navController.popBackStack() }
             )
         }
-        composable("create") {
+
+        composable<CreateNote> {
             CreateNoteScreen(
-                onBack = { navController.popBackStack() },
-                onSaveSuccess = { navController.popBackStack() }
+                onBack = { navController.popBackStack() }
             )
         }
     }

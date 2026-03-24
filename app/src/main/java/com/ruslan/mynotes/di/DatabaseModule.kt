@@ -4,6 +4,9 @@ import android.content.Context
 import com.ruslan.mynotes.data.repository.NotesRepository
 import com.ruslan.mynotes.data.repository.NotesRepositoryImpl
 import com.ruslan.mynotes.data.source.local.LocalNoteDataSource
+import com.ruslan.mynotes.data.local.room.AppDatabase
+import com.ruslan.mynotes.data.local.room.NoteDao
+import com.ruslan.mynotes.data.local.room.RoomNoteDataSource
 import com.ruslan.mynotes.data.source.remote.RemoteNoteDataSource
 import dagger.Module
 import dagger.Provides
@@ -14,11 +17,24 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+object DatabaseModule {
+
     @Provides
     @Singleton
-    fun provideLocalNoteSource(@ApplicationContext context: Context): LocalNoteDataSource {
-        return LocalNoteDataSource(context)
+    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+        return AppDatabase.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNoteDao(database: AppDatabase): NoteDao {
+        return database.noteDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideLocalNoteSource(dao: NoteDao): LocalNoteDataSource {
+        return RoomNoteDataSource(dao)
     }
 
     @Provides

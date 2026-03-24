@@ -26,12 +26,15 @@ class RemoteNoteDataSource @Inject constructor(
     private companion object {
         const val MAX_ATTEMPTS = 3
         const val RETRY_DELAY_MS = 1000L
-        const val INITIAL_VERSION = 0
         const val OAUTH_CLIENT_ID = "0d0970774e284fa8ba9ff70b6b06479a"
     }
 
-    private var currentRevision: Int = INITIAL_VERSION
+    private var currentRevision: Int = 0
     private val isRefreshingToken = AtomicBoolean(false)
+
+    suspend fun init() {
+        loadNotes()
+    }
 
     suspend fun loadNotes(): List<Note> {
         return executeWithRetry {
@@ -43,59 +46,120 @@ class RemoteNoteDataSource @Inject constructor(
 
     suspend fun sendNote(note: Note): Note {
         return executeWithRetry(isWriteOperation = true) {
-            val response = apiService.createNote(
-                revision = currentRevision,
-                request = NoteRequest(note.toDto())
-            ).also { validateResponse(it) }
+            try {
+                val response = apiService.createNote(
+                    revision = currentRevision,
+                    request = NoteRequest(note.toDto())
+                ).also { validateResponse(it) }
 
-            currentRevision = response.body()?.revision ?: currentRevision
-            response.body()!!.element.toNote()
+                currentRevision = response.body()?.revision ?: currentRevision
+                response.body()!!.element.toNote()
+            } catch (e: IllegalStateException) {
+                if (e.message == "Data is out of sync") {
+                    loadNotes()
+                    val retryResponse = apiService.createNote(
+                        revision = currentRevision,
+                        request = NoteRequest(note.toDto())
+                    ).also { validateResponse(it) }
+
+                    currentRevision = retryResponse.body()?.revision ?: currentRevision
+                    retryResponse.body()!!.element.toNote()
+                } else {
+                    throw e
+                }
+            }
         }
     }
 
     suspend fun modifyNote(note: Note): Note {
         return executeWithRetry(isWriteOperation = true) {
-            val response = apiService.replaceNote(
-                revision = currentRevision,
-                noteId = note.id,
-                request = NoteRequest(note.toDto())
-            ).also { validateResponse(it) }
+            try {
+                val response = apiService.replaceNote(
+                    revision = currentRevision,
+                    noteId = note.id,
+                    request = NoteRequest(note.toDto())
+                ).also { validateResponse(it) }
 
-            currentRevision = response.body()?.revision ?: currentRevision
-            response.body()!!.element.toNote()
+                currentRevision = response.body()?.revision ?: currentRevision
+                response.body()!!.element.toNote()
+            } catch (e: IllegalStateException) {
+                if (e.message == "Data is out of sync") {
+                    loadNotes()
+                    val retryResponse = apiService.replaceNote(
+                        revision = currentRevision,
+                        noteId = note.id,
+                        request = NoteRequest(note.toDto())
+                    ).also { validateResponse(it) }
+
+                    currentRevision = retryResponse.body()?.revision ?: currentRevision
+                    retryResponse.body()!!.element.toNote()
+                } else {
+                    throw e
+                }
+            }
         }
     }
 
     suspend fun removeNote(id: String): Boolean {
         return executeWithRetry(isWriteOperation = true) {
-            val response = apiService.eraseNote(
-                revision = currentRevision,
-                noteId = id
-            ).also { validateResponse(it) }
+            try {
+                val response = apiService.eraseNote(
+                    revision = currentRevision,
+                    noteId = id
+                ).also { validateResponse(it) }
 
-            currentRevision = response.body()?.revision ?: currentRevision
-            true
+                currentRevision = response.body()?.revision ?: currentRevision
+                true
+            } catch (e: IllegalStateException) {
+                if (e.message == "Data is out of sync") {
+                    loadNotes()
+                    val retryResponse = apiService.eraseNote(
+                        revision = currentRevision,
+                        noteId = id
+                    ).also { validateResponse(it) }
+
+                    currentRevision = retryResponse.body()?.revision ?: currentRevision
+                    true
+                } else {
+                    throw e
+                }
+            }
         }
     }
 
     suspend fun syncNotes(notes: List<Note>): List<Note> {
         return executeWithRetry(isWriteOperation = true) {
-            val response = apiService.syncNotes(
-                revision = currentRevision,
-                request = SyncRequest(notes.map { it.toDto() })
-            )
-            currentRevision = response.revision
-            response.list.map { it.toNote() }
+            try {
+                val response = apiService.syncNotes(
+                    revision = currentRevision,
+                    request = SyncRequest(notes.map { it.toDto() })
+                )
+                currentRevision = response.revision
+                response.list.map { it.toNote() }
+            } catch (e: IllegalStateException) {
+                if (e.message == "Data is out of sync") {
+                    loadNotes()
+                    val retryResponse = apiService.syncNotes(
+                        revision = currentRevision,
+                        request = SyncRequest(notes.map { it.toDto() })
+                    )
+                    currentRevision = retryResponse.revision
+                    retryResponse.list.map { it.toNote() }
+                } else {
+                    throw e
+                }
+            }
         }
     }
 
     private fun validateResponse(response: retrofit2.Response<*>) {
         if (!response.isSuccessful) {
             val errorBody = response.errorBody()?.string()
-            throw HttpException(response).also {
-                if (errorBody?.contains("unsynchronized data") == true) {
-                    throw IllegalStateException("Local data is out of sync with server")
+            throw when {
+                errorBody?.contains("unsynchronized data") == true -> {
+                    IllegalStateException("Data is out of sync")
                 }
+                else -> HttpException(response)
             }
         }
     }
@@ -113,9 +177,6 @@ class RemoteNoteDataSource @Inject constructor(
             } catch (e: Exception) {
                 lastError = e
                 if (shouldRetry(e, isWriteOperation)) {
-                    if (e is IllegalStateException && e.message == "Local data is out of sync with server") {
-                        loadNotes()
-                    }
                     delay(RETRY_DELAY_MS * (attempt + 1))
                     attempt++
                 } else {
@@ -157,27 +218,38 @@ class RemoteNoteDataSource @Inject constructor(
             else -> "basic"
         },
         done = false,
-        createdAt = System.currentTimeMillis(),
+        createdAt = this.createdAt.time,
+        changedAt = Date().time,
+        lastUpdatedBy = "android-client",
         color = this.bgColor.takeIf { it != Color.WHITE }?.let {
             String.format("#%06X", 0xFFFFFF and it)
         }
     )
 
     private fun NoteDto.toNote(): Note {
-        val parts = this.text.split("\n", limit = 2)
-        val title = parts.getOrNull(0) ?: ""
-        val content = parts.getOrNull(1) ?: ""
+        val title: String
+        val content: String
+
+        if (text.contains('\n')) {
+            val splitIndex = text.indexOf('\n')
+            title = text.substring(0, splitIndex)
+            content = text.substring(splitIndex + 1)
+        } else {
+            title = text
+            content = ""
+        }
 
         return Note(
-            id = this.id,
+            id = id,
             name = title,
             text = content,
-            bgColor = this.color?.let { Color.parseColor(it) } ?: Color.WHITE,
-            level = when (this.importance.lowercase()) {
+            bgColor = color?.let { Color.parseColor(it) } ?: Color.WHITE,
+            level = when (importance.lowercase()) {
                 "important" -> Importance.HIGH
                 "low" -> Importance.LOW
                 else -> Importance.NORMAL
-            }
+            },
+            createdAt = Date(createdAt)
         )
     }
 }

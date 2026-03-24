@@ -55,8 +55,6 @@ class CreateNoteViewModel @Inject constructor(
                 }.onFailure { error ->
                     _uiEvents.emit(UiEvent.Error("Ошибка синхронизации: ${error.message}"))
                 }
-
-                repository.synchronizeWithServer()
             } catch (e: Exception) {
                 _uiEvents.emit(UiEvent.Error("Ошибка сохранения: ${e.message}"))
             }

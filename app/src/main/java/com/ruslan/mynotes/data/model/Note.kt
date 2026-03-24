@@ -2,6 +2,7 @@ package com.ruslan.mynotes.data.model
 
 import android.graphics.Color
 import org.json.JSONObject
+import java.util.Date
 import java.util.UUID
 
 data class Note(
@@ -9,7 +10,8 @@ data class Note(
     val name: String,
     val text: String,
     val bgColor: Int = Color.WHITE,
-    val level: Importance = Importance.NORMAL
+    val level: Importance = Importance.NORMAL,
+    val createdAt: Date = Date()
 ) {
     val uid: String get() = id
     val title: String get() = name
@@ -40,5 +42,20 @@ data class Note(
                 null
             }
         }
+
+        val Note.toJson: JSONObject
+            get() = JSONObject().apply {
+                put("uid", id)
+                put("title", name)
+                put("content", text)
+
+                if (bgColor != Color.WHITE) {
+                    put("color", bgColor)
+                }
+
+                if (level != Importance.NORMAL) {
+                    put("importance", level.name)
+                }
+            }
     }
 }
