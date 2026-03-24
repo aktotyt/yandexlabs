@@ -8,6 +8,8 @@ import com.ruslan.mynotes.data.model.Importance
 import com.ruslan.mynotes.data.model.Note
 import com.ruslan.mynotes.data.repository.NotesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,6 +27,9 @@ class CreateNoteViewModel @Inject constructor(
     )
     val note = _note
 
+    private val _uiEvents = MutableSharedFlow<UiEvent>()
+    val uiEvents = _uiEvents.asSharedFlow()
+
     fun updateTitle(title: String) {
         _note.value = _note.value.copy(name = title)
     }
@@ -41,10 +46,25 @@ class CreateNoteViewModel @Inject constructor(
         _note.value = _note.value.copy(level = importance)
     }
 
-    fun saveNote(onSuccess: () -> Unit) {
+    fun saveNote() {
         viewModelScope.launch {
-            repository.storeNoteToCache(_note.value)
-            onSuccess()
+            try {
+                repository.storeNoteToCache(_note.value)
+                repository.uploadNoteToServer(_note.value).onSuccess {
+                    _uiEvents.emit(UiEvent.NoteSaved)
+                }.onFailure { error ->
+                    _uiEvents.emit(UiEvent.Error("Ошибка синхронизации: ${error.message}"))
+                }
+
+                repository.synchronizeWithServer()
+            } catch (e: Exception) {
+                _uiEvents.emit(UiEvent.Error("Ошибка сохранения: ${e.message}"))
+            }
         }
+    }
+
+    sealed class UiEvent {
+        object NoteSaved : UiEvent()
+        data class Error(val message: String) : UiEvent()
     }
 }

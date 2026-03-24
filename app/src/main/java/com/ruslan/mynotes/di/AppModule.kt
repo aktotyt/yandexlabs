@@ -14,17 +14,11 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object DataModule {
+object AppModule {
     @Provides
     @Singleton
     fun provideLocalNoteSource(@ApplicationContext context: Context): LocalNoteDataSource {
         return LocalNoteDataSource(context)
-    }
-
-    @Provides
-    @Singleton
-    fun provideRemoteNoteSource(): RemoteNoteDataSource {
-        return RemoteNoteDataSource()
     }
 
     @Provides

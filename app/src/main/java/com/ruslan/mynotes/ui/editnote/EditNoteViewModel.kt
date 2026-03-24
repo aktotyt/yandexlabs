@@ -7,8 +7,10 @@ import com.ruslan.mynotes.data.model.Importance
 import com.ruslan.mynotes.data.model.Note
 import com.ruslan.mynotes.data.repository.NotesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,6 +28,9 @@ class EditNoteViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _uiEvents = MutableSharedFlow<UiEvent>()
+    val uiEvents = _uiEvents.asSharedFlow()
+
     init {
         loadNote()
     }
@@ -33,8 +38,20 @@ class EditNoteViewModel @Inject constructor(
     private fun loadNote() {
         viewModelScope.launch {
             _isLoading.value = true
-            _note.value = repository.observeNoteById(noteId).first()
-            _isLoading.value = false
+            try {
+                var localNote = repository.observeNoteById(noteId).first()
+
+                if (localNote == null) {
+                    repository.syncNotesFromServer()
+                    localNote = repository.observeNoteById(noteId).first()
+                }
+
+                _note.value = localNote
+            } catch (e: Exception) {
+                _uiEvents.emit(UiEvent.Error("Ошибка загрузки заметки: ${e.message}"))
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
@@ -56,7 +73,49 @@ class EditNoteViewModel @Inject constructor(
 
     fun saveNote() {
         viewModelScope.launch {
-            _note.value?.let { repository.storeNoteToCache(it) }
+            _isLoading.value = true
+            try {
+                val currentNote = _note.value ?: return@launch
+                repository.storeNoteToCache(currentNote)
+
+                repository.uploadNoteToServer(currentNote).onSuccess {
+                    _uiEvents.emit(UiEvent.NoteSaved)
+                }.onFailure { error ->
+                    _uiEvents.emit(UiEvent.Error("Ошибка синхронизации: ${error.message}"))
+                }
+
+                repository.synchronizeWithServer()
+            } catch (e: Exception) {
+                _uiEvents.emit(UiEvent.Error("Ошибка сохранения: ${e.message}"))
+            } finally {
+                _isLoading.value = false
+            }
         }
+    }
+
+    fun deleteNote() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                repository.removeNoteFromCache(noteId)
+                repository.deleteNoteOnServer(noteId).onSuccess {
+                    _uiEvents.emit(UiEvent.NoteDeleted)
+                }.onFailure { error ->
+                    _uiEvents.emit(UiEvent.Error("Ошибка удаления: ${error.message}"))
+                }
+
+                repository.synchronizeWithServer()
+            } catch (e: Exception) {
+                _uiEvents.emit(UiEvent.Error("Ошибка удаления: ${e.message}"))
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    sealed class UiEvent {
+        object NoteSaved : UiEvent()
+        object NoteDeleted : UiEvent()
+        data class Error(val message: String) : UiEvent()
     }
 }
